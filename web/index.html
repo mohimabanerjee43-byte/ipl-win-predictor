@@ -1,127 +1,161 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>IPL Win Predictor</title>
 
     <style>
         body {
             font-family: Arial, sans-serif;
-            background: #0f172a;
+            background: linear-gradient(135deg, #1e3c72, #2a5298);
             color: white;
-            text-align: center;
-            padding: 40px;
-        }
-
-        h1 {
-            color: #38bdf8;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
         }
 
         .container {
-            background: #1e293b;
+            background: white;
+            color: black;
             padding: 25px;
             border-radius: 12px;
             width: 350px;
-            margin: auto;
-            box-shadow: 0 0 10px rgba(0,0,0,0.5);
+            text-align: center;
+            box-shadow: 0px 10px 25px rgba(0,0,0,0.2);
+        }
+
+        h2 {
+            margin-bottom: 20px;
         }
 
         input {
             width: 90%;
             padding: 10px;
             margin: 8px 0;
-            border-radius: 8px;
-            border: none;
+            border-radius: 6px;
+            border: 1px solid #ccc;
         }
 
         button {
-            background: #38bdf8;
-            color: black;
-            padding: 10px 20px;
+            background: #1e90ff;
+            color: white;
             border: none;
-            border-radius: 8px;
+            padding: 10px 20px;
+            border-radius: 6px;
             cursor: pointer;
-            font-weight: bold;
+            margin-top: 10px;
         }
 
         button:hover {
-            background: #0ea5e9;
+            background: #187bcd;
         }
 
         #result {
-            margin-top: 20px;
+            margin-top: 15px;
             font-size: 18px;
+            font-weight: bold;
         }
 
-        .bar {
-            height: 20px;
-            background: green;
+        .bar-container {
+            background: #ddd;
+            height: 10px;
+            border-radius: 5px;
             margin-top: 10px;
-            border-radius: 10px;
-            transition: width 0.5s;
+        }
+
+        #bar {
+            height: 10px;
+            width: 0%;
+            background: green;
+            border-radius: 5px;
+        }
+
+        #summary {
+            margin-top: 10px;
+            font-weight: bold;
         }
     </style>
 </head>
 
 <body>
 
-    <h1>🏏 IPL Win Predictor</h1>
+<div class="container">
 
-    <div class="container">
+    <h2>🏏 IPL Win Predictor</h2>
 
-        <input type="number" id="current_score" placeholder="Current Score">
-        <input type="number" id="balls_left" placeholder="Balls Left">
-        <input type="number" id="wickets_left" placeholder="Wickets Left">
-        <input type="number" step="0.1" id="run_rate" placeholder="Run Rate">
-        <input type="number" step="0.1" id="required_run_rate" placeholder="Required Run Rate">
+    <input id="score" type="number" placeholder="Current Score">
+    <input id="balls" type="number" placeholder="Balls Left">
+    <input id="wickets" type="number" placeholder="Wickets Left">
+    <input id="runrate" type="number" step="0.1" placeholder="Run Rate">
+    <input id="reqrunrate" type="number" step="0.1" placeholder="Required Run Rate">
 
-        <button onclick="predict()">Predict</button>
+    <button onclick="predict()">Predict</button>
 
-        <div id="result"></div>
-        <div class="bar" id="bar" style="width:0%"></div>
+    <div id="result"></div>
 
+    <div class="bar-container">
+        <div id="bar"></div>
     </div>
 
-    <script>
-        async function predict() {
+    <div id="summary"></div>
 
-            const data = {
-                current_score: parseInt(document.getElementById("current_score").value),
-                balls_left: parseInt(document.getElementById("balls_left").value),
-                wickets_left: parseInt(document.getElementById("wickets_left").value),
-                run_rate: parseFloat(document.getElementById("run_rate").value),
-                required_run_rate: parseFloat(document.getElementById("required_run_rate").value)
-            };
+</div>
 
-            try {
-                const response = await fetch("http://127.0.0.1:8000/predict", {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json"
-                    },
-                    body: JSON.stringify(data)
-                });
+<script>
+async function predict() {
 
-                const result = await response.json();
+    const score = parseFloat(document.getElementById("score").value);
+    const balls = parseFloat(document.getElementById("balls").value);
+    const wickets = parseFloat(document.getElementById("wickets").value);
+    const runrate = parseFloat(document.getElementById("runrate").value);
+    const reqrate = parseFloat(document.getElementById("reqrunrate").value);
 
-                if (result.error) {
-                    document.getElementById("result").innerText = "Error: " + result.error;
-                    return;
-                }
+    if (
+        isNaN(score) ||
+        isNaN(balls) ||
+        isNaN(wickets) ||
+        isNaN(runrate) ||
+        isNaN(reqrate)
+    ) {
+        alert("Please fill all fields correctly!");
+        return;
+    }
 
-                let probability = result.prediction * 100;
+    const data = {
+        current_score: score,
+        balls_left: balls,
+        wickets_left: wickets,
+        run_rate: runrate,
+        required_run_rate: reqrate
+    };
 
-                document.getElementById("result").innerText =
-                    "Win Probability: " + probability.toFixed(2) + "%";
+    const response = await fetch("http://127.0.0.1:8000/predict", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify(data)
+    });
 
-                document.getElementById("bar").style.width = probability + "%";
+    const result = await response.json();
 
-            } catch (error) {
-                document.getElementById("result").innerText = "Server not responding!";
-            }
-        }
-    </script>
+    const prob = result.prediction;
+    const percent = (prob * 100).toFixed(2);
+
+    document.getElementById("result").innerText =
+        "Winning Probability: " + percent + "%";
+
+    document.getElementById("bar").style.width = percent + "%";
+
+    let summary;
+    if (prob > 0.7) summary = "🔥 Batting team strongly ahead";
+    else if (prob > 0.5) summary = "🙂 Batting team slightly ahead";
+    else if (prob > 0.3) summary = "⚖️ Match is balanced";
+    else summary = "🎯 Bowling team in control";
+
+    document.getElementById("summary").innerText = summary;
+}
+</script>
 
 </body>
 </html>

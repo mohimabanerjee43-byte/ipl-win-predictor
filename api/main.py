@@ -1,12 +1,7 @@
 from fastapi import FastAPI
 from pydantic import BaseModel
 from fastapi.middleware.cors import CORSMiddleware
-import pickle
-import pandas as pd
 import numpy as np
-import os
-
-from fastapi.middleware.cors import CORSMiddleware
 
 # -------------------- APP INIT --------------------
 app = FastAPI()
@@ -15,20 +10,10 @@ app = FastAPI()
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
-    allow_credentials=True,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-# -------------------- LOAD MODEL --------------------
-model_path = os.path.join("models", "model.pkl")
-
-try:
-    model = pickle.load(open(model_path, "rb"))
-    print("✅ Model loaded successfully")
-except Exception as e:
-    print("❌ Error loading model:", e)
-    model = None
 
 # -------------------- INPUT SCHEMA --------------------
 class InputData(BaseModel):
@@ -47,17 +32,32 @@ def home():
 @app.post("/predict")
 def predict(data: InputData):
     try:
-        input_df = pd.DataFrame([data.dict()])
-        input_array = input_df.values
+        # -------- VALIDATION --------
+        if (
+            data.balls_left <= 0 or
+            data.wickets_left < 0 or
+            data.run_rate < 0 or
+            data.required_run_rate < 0
+        ):
+            return {"error": "Invalid input values"}
 
-        proba = model.predict_proba(input_array)
+        # -------- CALCULATE PRESSURE --------
+        pressure = data.required_run_rate - data.run_rate
 
-        win_prob = float(proba[0][1])
+        # -------- LOGISTIC FUNCTION --------
+        logit = (-1.2 * pressure) + (0.35 * data.wickets_left)
+
+        win_prob = 1 / (1 + np.exp(-logit))
+
+        # -------- CLAMP (extra safety) --------
+        win_prob = max(0.0, min(1.0, float(win_prob)))
+
+        print("📊 Prediction:", win_prob)
 
         return {
             "prediction": win_prob
         }
 
     except Exception as e:
-        return {"error": str(e)
-        }
+        print("❌ Error:", e)
+        return {"error": str(e)}
