@@ -45,7 +45,7 @@ def predict(data: InputData):
         pressure = data.required_run_rate - data.run_rate
 
         # -------- LOGISTIC FUNCTION --------
-        logit = (-1.2 * pressure) + (0.35 * data.wickets_left)
+        logit = (-0.9 * pressure) + (0.35 * data.wickets_left) + (0.01 * data.balls_left)
 
         win_prob = 1 / (1 + np.exp(-logit))
 
